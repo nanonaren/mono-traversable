@@ -27,6 +27,7 @@ import           Control.Category
 import           Control.Monad        (Monad (..), liftM)
 import qualified Data.ByteString      as S
 import qualified Data.ByteString.Lazy as L
+import           Control.DeepSeq
 import qualified Data.Foldable        as F
 import           Data.Functor
 import           Data.Monoid (Monoid (..), Any (..), All (..))
@@ -38,7 +39,7 @@ import Data.Int (Int, Int64)
 import           GHC.Exts             (build)
 import           Prelude              (Bool (..), const, Char, flip, ($), IO, Maybe (..), Either (..),
                                        replicate, (+), Integral, Ordering (..), compare, fromIntegral, Num, (>=),
-                                       seq, otherwise, maybe, Ord, (-), (*))
+                                       seq, otherwise, maybe, Ord, (-), (*),($!))
 import qualified Prelude
 import qualified Data.ByteString.Internal as Unsafe
 import qualified Foreign.ForeignPtr.Unsafe as Unsafe
@@ -609,6 +610,16 @@ lastMay mono
 osum :: (MonoFoldable mono, Num (Element mono)) => mono -> Element mono
 osum = ofoldl' (+) 0
 {-# INLINE osum #-}
+
+-- | !not exported! A strict foldMap
+ofoldMap' :: (MonoFoldable mono,Monoid m) => (Element mono -> m) -> mono -> m
+ofoldMap' f = ofoldl' (\acc x -> (mappend acc) $! f x) mempty
+{-# INLINE ofoldMap' #-}
+
+-- | !not exported! Alternatively, the following would be better
+ofoldMapNF :: (MonoFoldable mono,Monoid m,NFData m) => (Element mono -> m) -> mono -> m
+ofoldMapNF f = ofoldl' (\acc x -> (mappend acc) $!! f x) mempty
+{-# INLINE ofoldMapNF #-}
 
 -- | The 'product' function computes the product of the numbers of a structure.
 oproduct :: (MonoFoldable mono, Num (Element mono)) => mono -> Element mono
